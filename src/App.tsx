@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Home from './screens/Home';
 import Game from './screens/Game';
-import { useAppSelector } from './app/hooks';
-import { selectUser } from './features/user/userSlice';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+} from "react-router-dom";
 
 function App() {
-  const user = useAppSelector(selectUser);
-  useState(() => {
-    console.log(user);
-  }, );
   return (
-    <div>
-      Hola
-    </div>
+    <Router>
+      <Routes>
+        <Route path='/' element={<Home/>} />
+        <Route path='/game' element={<Game/>} />
+      </Routes>
+    </Router>
   );
 }
 
