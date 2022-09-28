@@ -7,6 +7,7 @@ import Card from "../components/card";
 import userPNG from '../assets/svg/user.png';
 import roomPNG from '../assets/svg/room.png';
 import logoSVG from '../assets/svg/logo.svg';
+import { getCards, returnHand } from "../services/game.socket";
 
 const styles = {
   container: {
@@ -103,33 +104,18 @@ const cards = [
   'ace_of_diamonds',
   'ace_of_hearts',
   'ace_of_spades',
-  //'ace_of_spades2',
-  //'black_joker',
-  //'jack_of_clubs',
   'jack_of_clubs2',
-  //'jack_of_diamonds',
   'jack_of_diamonds2',
-  //'jack_of_hearts',
   'jack_of_hearts2',
-  //'jack_of_spades',
   'jack_of_spades2',
-  //'king_of_clubs',
   'king_of_clubs2',
-  //'king_of_diamonds',
   'king_of_diamonds2',
-  //'king_of_hearts',
   'king_of_hearts2',
-  //'king_of_spades',
   'king_of_spades2',
-  //'queen_of_clubs',
   'queen_of_clubs2',
-  //'queen_of_diamonds',
   'queen_of_diamonds2',
-  //'queen_of_hearts',
   'queen_of_hearts2',
-  //'queen_of_spades',
   'queen_of_spades2',
-  //'red_joker',
 ]
 
 const Game = () => {
@@ -137,17 +123,34 @@ const Game = () => {
   const navigate = useNavigate();
   const user = useAppSelector(selectUser);
   const [selectedCard, setSelectedCard] = React.useState(null);
+  const [hand, setHand] = React.useState([]);
 
   const handleExitGame = () => {
     dispatch(removeRoom());
     navigate("/");
   };
 
+  const testSocket = () => {
+    getCards({ username: user.value.username, room: user.value.room });
+  }
+
+  const handleReturnHand = (res) => {
+    setHand(res.cards);
+    setSelectedCard(null);
+  }
+
+  useEffect(() => {
+    getCards({ username: user.value.username, room: user.value.room });
+    returnHand(handleReturnHand);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (user.status === 'not joined') {
       navigate("/");
     }
   }, [user.status, navigate]);
+
 
   return (
     <div style={styles.container}>
@@ -162,12 +165,14 @@ const Game = () => {
         <Button variant="contained" style={styles.header.leave} onClick={() => handleExitGame()}>Salir</Button>
       </div>
       <div style={styles.cardsContainer}>
-        {cards.map((card) => (
-          <div key={card} style={selectedCard === card ? styles.selectedCard : styles.card} onClick={() => setSelectedCard(card)}>
-            <Card id={card} />
+        {hand.map((cardIndex) => (
+          <div key={cardIndex} style={selectedCard === cardIndex ? styles.selectedCard : styles.card} onClick={() => setSelectedCard(cardIndex)}>
+            <Card id={cards[cardIndex]} />
           </div>
         ))}
       </div>
+      <br/><br/>
+      <Button variant="contained" onClick={() => testSocket()}>emit getCards</Button>
     </div>
   );
 };
