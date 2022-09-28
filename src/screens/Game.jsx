@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Button from '@mui/material/Button';
 import { useNavigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from '../app/hooks';
-import { logout, selectUser } from '../features/user/userSlice';
+import { removeRoom, selectUser } from '../features/user/userSlice';
 import Card from "../components/card";
+import userPNG from '../assets/svg/user.png';
+import roomPNG from '../assets/svg/room.png';
+import logoSVG from '../assets/svg/logo.svg';
 
 const styles = {
   container: {
@@ -12,15 +15,50 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     height: "100vh",
+    backgroundColor: "#bbdefb",
+  },
+  header: {
+    width: "100%",
+    backgroundColor: "white",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    position: "absolute",
+    top: 0,
+    info: {
+      display: "flex",
+      alignItems: "center",
+    },
+    user: {
+      height: "2em",
+      margin: "0 5px 0 10px",
+    },
+    room: {
+      height: "2.2em",
+      margin: "0 5px 0 25px",
+    },
+    logo: {
+      width: "10%",
+    },
+    leave: {
+      height: "50%",
+      margin: "0 10px 0 0",
+    },
   },
   cardsContainer: {
-    display: "grid",
-    gridTemplateColumns: "repeat(11, 1fr)",
-    gridGap: "1rem",
-    width: "75%",
+    display: "flex",
+    flexWrap: "wrap",
+    width: "50vw",
+  },
+  card: {
+    margin: "2px",
+    cursor: "pointer",
   },
   selectedCard: {
-    border: "2px solid red",
+    border: "2px solid blue",
+    transform: "scale(1.4)",
+    boxShadow: "0px 0px 11px 3px rgba(0,0,0,0.55)",
+    transition: "transform 0.2s ease-out",
   },
 };
 
@@ -65,33 +103,33 @@ const cards = [
   'ace_of_diamonds',
   'ace_of_hearts',
   'ace_of_spades',
-  'ace_of_spades2',
-  'black_joker',
-  'jack_of_clubs',
+  //'ace_of_spades2',
+  //'black_joker',
+  //'jack_of_clubs',
   'jack_of_clubs2',
-  'jack_of_diamonds',
-  'jack_of_diamods2',
-  'jack_of_hearts',
+  //'jack_of_diamonds',
+  'jack_of_diamonds2',
+  //'jack_of_hearts',
   'jack_of_hearts2',
-  'jack_of_spades',
+  //'jack_of_spades',
   'jack_of_spades2',
-  'king_of_clubs',
+  //'king_of_clubs',
   'king_of_clubs2',
-  'king_of_diamonds',
+  //'king_of_diamonds',
   'king_of_diamonds2',
-  'king_of_hearts',
+  //'king_of_hearts',
   'king_of_hearts2',
-  'king_of_spades',
+  //'king_of_spades',
   'king_of_spades2',
-  'queen_of_clubs',
+  //'queen_of_clubs',
   'queen_of_clubs2',
-  'queen_of_diamonds',
+  //'queen_of_diamonds',
   'queen_of_diamonds2',
-  'queen_of_hearts',
+  //'queen_of_hearts',
   'queen_of_hearts2',
-  'queen_of_spades',
+  //'queen_of_spades',
   'queen_of_spades2',
-  'red_joker',
+  //'red_joker',
 ]
 
 const Game = () => {
@@ -101,22 +139,35 @@ const Game = () => {
   const [selectedCard, setSelectedCard] = React.useState(null);
 
   const handleExitGame = () => {
-    dispatch(logout());
+    dispatch(removeRoom());
     navigate("/");
   };
 
+  useEffect(() => {
+    if (user.status === 'not joined') {
+      navigate("/");
+    }
+  }, [user.status, navigate]);
+
   return (
     <div style={styles.container}>
-      <h1>Game</h1>
-      <p>{user.value.username}</p>
+      <div style={styles.header}>
+        <div style={styles.header.info}>
+          <img src={userPNG} alt="user" style={styles.header.user}/>
+          <p>{user.value.username}</p>
+          <img src={roomPNG} alt="user" style={styles.header.room}/>
+          <p>{user.value.room}</p>
+        </div>
+        <img src={logoSVG} alt="logo" style={styles.header.logo}/>
+        <Button variant="contained" style={styles.header.leave} onClick={() => handleExitGame()}>Salir</Button>
+      </div>
       <div style={styles.cardsContainer}>
         {cards.map((card) => (
-          <div key={card} style={selectedCard === card ? styles.selectedCard : {}} onClick={() => setSelectedCard(card)}>
+          <div key={card} style={selectedCard === card ? styles.selectedCard : styles.card} onClick={() => setSelectedCard(card)}>
             <Card id={card} />
           </div>
         ))}
       </div>
-      <Button variant="contained" onClick={() => handleExitGame()}>Salir</Button>
     </div>
   );
 };

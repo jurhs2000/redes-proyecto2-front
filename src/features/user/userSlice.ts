@@ -6,7 +6,7 @@ export interface UserState {
     username: string;
     room: string;
   };
-  status: 'not connected' | 'connecting' | 'connected' | 'failed';
+  status: 'not joined' | 'joined';
 }
 
 const initialState: UserState = {
@@ -14,31 +14,31 @@ const initialState: UserState = {
     username: '',
     room: '',
   },
-  status: 'not connected',
+  status: 'not joined',
 };
 
 export const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    login: (state, action: PayloadAction<{ username: string, room: string }>) => {
+    addRoom: (state, action: PayloadAction<{ username: string, room: string }>) => {
       state.value = {
         username: action.payload.username,
         room: action.payload.room,
       };
-      state.status = 'connected';
+      state.status = 'joined';
     },
-    logout: (state) => {
+    removeRoom: (state) => {
       state.value = {
         username: '',
-        room: '',
+        room: ''
       };
-      state.status = 'not connected';
+      state.status = 'not joined';
     },
   },
 });
 
-export const { login, logout } = userSlice.actions;
+export const { addRoom, removeRoom } = userSlice.actions;
 
 export const selectUser = (state: RootState) => state.user;
 
