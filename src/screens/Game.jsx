@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Button from "@mui/material/Button";
 import TextField from '@mui/material/TextField';
 import { useNavigate } from "react-router-dom";
@@ -154,6 +154,12 @@ const styles = {
   },
   myGame: {
     flex: 1,
+    buttonContainer: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      margin: "40px 0 0 0",
+    }
   },
   card: {
     margin: "2px",
@@ -227,20 +233,61 @@ const Game = () => {
   const navigate = useNavigate();
   const user = useAppSelector(selectUser);
   const messagesContainerRef = useRef();
-  const [selectedCard, setSelectedCard] = React.useState(null);
-  const [hand, setHand] = React.useState([]);
-  const [roomUsers, setRoomUsers] = React.useState([]);
-  const [state, setState] = React.useState({
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [hand, setHand] = useState([]);
+  const [roomUsers, setRoomUsers] = useState([]);
+  const [state, setState] = useState({
     turn: -1,
     usernameTurn: null,
+    cardPlayed: null,
   });
-  const [messages, setMessages] = React.useState([]);
-  const [message, setMessage] = React.useState("");
+  const [hint, setHint] = useState(null);
+  const [instruction, setInstruction] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [message, setMessage] = useState("");
+  const [isTruth, setIsTruth] = useState(false);
 
   const handleExitGame = () => {
     dispatch(removeRoom());
     navigate("/");
   };
+
+  const getSameNumberCards = () => {
+    const sameNumberCards = cards.filter((card) => {
+      const cardNumber = card.split("_")[0];
+      const previousCardNumber = state.cardPlayedName.split("_")[0];
+      return cardNumber === previousCardNumber;
+    });
+    return sameNumberCards;
+  };
+
+  const getCardsFromHand = (cards) => {
+    // cards is the array of cards to find in the hand
+    const cardsFromHand = hand.filter((card) => {
+      return cards.includes(card);
+    });
+    return cardsFromHand;
+  };
+
+  const getTruth = () => {
+    if (state.turn === 0) {
+      console.log(state.cardPlayedName);
+      const sameNumberCards = getSameNumberCards();
+      console.log(sameNumberCards);
+      const cardsFromHand = getCardsFromHand(sameNumberCards);
+      console.log(cardsFromHand);
+      if (cardsFromHand.length > 0) {
+        setHint(`Puedes jugar las cartas: ${cardsFromHand.join(", ")} de tu mano`);
+      } else {
+        setHint("No tienes cartas para jugar");
+      }
+      if (selectedCard && cardsFromHand.includes(cards[selectedCard])) {
+        setIsTruth(true);
+      } else {
+        setIsTruth(false);
+      }
+    }
+  }
 
   const handleSetMessage = (e) => {
     setMessage(e.target.value);
@@ -260,11 +307,23 @@ const Game = () => {
   const handleReturnHand = (res) => {
     setHand(res.cards);
     setSelectedCard(null);
-    setState((prevState) => ({ turn: prevState.turn + 1, usernameTurn: roomUsers?.[0]?.username }));
+    setState((prevState) => ({ ...prevState, turn: prevState.turn + 1 }));
   };
 
   const handleRoomUsers = (res) => {
     setRoomUsers(res.users.map((user, index) => ({ ...user, isPartyLeader: user.username === res.users[0].username, order: index, cards: 10, isInTurn: false, cardGiven: false })));
+  };
+
+  const handleSendCard = () => {
+    console.log(selectedCard);
+    console.log(hand);
+    console.log(hand.findIndex((card) => card === selectedCard));
+  };
+
+  const getInstructions = () => {
+    if (state.turn === 0) {
+      setInstruction("Elige una carta con número 2");
+    }
   };
 
   const handleMessage = (res) => {
@@ -285,10 +344,38 @@ const Game = () => {
   }, []);
 
   useEffect(() => {
+    const updatedRoomUsers = roomUsers.map((roomUser) => {
+      if (state.usernameTurn === roomUser.username) {
+        return { ...roomUser, isInTurn: true };
+      }
+      return { ...roomUser, isInTurn: false };
+    });
+    setRoomUsers(updatedRoomUsers);
+    getInstructions();
+    getTruth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  useEffect(() => {
+    if (selectedCard) {
+      getTruth();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCard]);
+
+  // Solo para indicar el primer jugador al principio del juego
+  useEffect(() => {
+    const newState = { turn: state.turn, cardPlayedName: cards[0], usernameTurn: roomUsers?.[0]?.username };
+    if (newState.usernameTurn !== state.usernameTurn) setState(newState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomUsers]);
+
+  useEffect(() => {
     if (user.status === "not joined") {
       navigate("/");
     }
   }, [user.status, navigate]);
+
 
   return (
     <div style={styles.container}>
@@ -336,7 +423,7 @@ const Game = () => {
         <div style={styles.cardGameContainer}>
           <div style={styles.othersGame}>
             {
-              roomUsers.map((roomUser) => (
+              roomUsers?.map((roomUser) => (
                 roomUser.username !== user.value.username ?
                   <OthersGame key={roomUser.username} roomUser={roomUser} />
                 : null
@@ -363,6 +450,8 @@ const Game = () => {
             ) : null}
           </div>
           <div style={styles.myGame}>
+            { instruction ? <p>{instruction}</p> : null }
+            { hint ? <p>{hint}</p> : null }
             <div style={styles.cardsContainer}>
               {hand.map((cardIndex) => (
                 <div
@@ -376,6 +465,27 @@ const Game = () => {
                 </div>
               ))}
             </div>
+            {
+              // Seleccionar carta
+              state.usernameTurn === user.value.username ? (
+                <div style={styles.myGame.buttonContainer}>
+                  {
+                    selectedCard ? (
+                      <Button
+                        variant="contained"
+                        onClick={handleSendCard}
+                      >
+                        {
+                          isTruth ? 'Enviar carta verdadera' : 'Enviar carta falsa'
+                        }
+                      </Button>
+                    ) : (
+                      <p>Selecciona una carta</p>
+                    )
+                  }
+                </div>
+              ) : <p>Espere su turno</p>
+            }
           </div>
         </div>
       </div>
