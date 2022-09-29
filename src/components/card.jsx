@@ -66,6 +66,7 @@ import Queen_Of_Hearts2 from "../assets/PNG-cards-1.3/queen_of_hearts2.png";
 import Queen_Of_Spades from "../assets/PNG-cards-1.3/queen_of_spades.png";
 import Queen_Of_Spades2 from "../assets/PNG-cards-1.3/queen_of_spades2.png";
 import Red_Joker from "../assets/PNG-cards-1.3/red_joker.png";
+import Back from "../assets/PNG-cards-1.3/back.png";
 
 const cards = {
   "2_of_clubs": Two_Of_Clubs,
@@ -135,6 +136,7 @@ const cards = {
   "queen_of_spades": Queen_Of_Spades,
   "queen_of_spades2": Queen_Of_Spades2,
   "red_joker": Red_Joker,
+  "back": Back,
 };
 
 const Card = (props) => {
@@ -144,8 +146,8 @@ const Card = (props) => {
         backgroundImage: `url(${cards[props.id]})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        width: "50px",
-        height: "75px",
+        width: props?.small ? "30px" : "50px",
+        height: props?.small ? "43.56px" : "72.6px",
       }} />
     </div>
   );

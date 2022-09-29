@@ -1,12 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from '../app/hooks';
 import logo from '../assets/svg/logo.svg';
 import { addRoom } from "../features/user/userSlice";
-import { createRoom, joinRoom } from "../services/room.service";
-import { isSuccessfullResponse } from "../features/communication.utils";
+import { getError, getMessage, joinRoom } from "../services/game.socket";
 
 const styles = {
   container: {
@@ -88,6 +87,18 @@ const Home = () => {
     setRoom(event.target.value);
   };
 
+  const handleError = (error) => {
+    setState(STATE.WRITING_DATA);
+    setErrorMessage(error);
+  };
+
+  const handleSuccessfullMessage = (message) => {
+    if (gameType !== GAME_TYPE.NONE && state === STATE.LOADING) {
+      dispatch(addRoom({ username, room }));
+      navigate("/game");
+    }
+  };
+
   const handleStartGame = () => {
     if (state === STATE.NONE) {
       setGameType(GAME_TYPE.NEW);
@@ -95,15 +106,7 @@ const Home = () => {
     } else if (state === STATE.WRITING_DATA) {
       if (checkError()) return;
       setState(STATE.LOADING);
-      createRoom({ room, username }).then((res) => {
-        if (isSuccessfullResponse(res)) {
-          dispatch(addRoom({ username, room }));
-          navigate("/game");
-        } else {
-          setState(STATE.WRITING_DATA);
-          setErrorMessage(res.message);
-        }
-      });
+      joinRoom({ username, room });
     }
   };
 
@@ -114,17 +117,19 @@ const Home = () => {
     } else if (state === STATE.WRITING_DATA) {
       if (checkError()) return;
       setState(STATE.LOADING);
-      joinRoom({ room, username }).then((res) => {
-        if (isSuccessfullResponse(res)) {
-          dispatch(addRoom({ username, room }));
-          navigate("/game");
-        } else {
-          setState(STATE.WRITING_DATA);
-          setErrorMessage(res.message);
-        }
-      });
+      joinRoom({ username, room });
     }
   };
+
+  useEffect(() => {
+    getError(handleError);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    getMessage(handleSuccessfullMessage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameType, state, username, room]);
 
   return (
     <div style={styles.container}>
