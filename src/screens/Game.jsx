@@ -261,21 +261,21 @@ const Game = () => {
     return sameNumberCards;
   };
 
-  const getCardsFromHand = (cards) => {
+  const getCardsFromHand = (sameNumberCards) => {
     // cards is the array of cards to find in the hand
-    const cardsFromHand = hand.filter((card) => {
-      return cards.includes(card);
+    const handCardsNames = hand.map((card) => {
+      return cards[card];
+    })
+    const cardsMatch = sameNumberCards.filter((card) => {
+      return handCardsNames.includes(card);
     });
-    return cardsFromHand;
+    return cardsMatch;
   };
 
   const getTruth = () => {
     if (state.turn === 0) {
-      console.log(state.cardPlayedName);
       const sameNumberCards = getSameNumberCards();
-      console.log(sameNumberCards);
       const cardsFromHand = getCardsFromHand(sameNumberCards);
-      console.log(cardsFromHand);
       if (cardsFromHand.length > 0) {
         setHint(`Puedes jugar las cartas: ${cardsFromHand.join(", ")} de tu mano`);
       } else {
