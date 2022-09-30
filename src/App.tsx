@@ -6,6 +6,7 @@ import {
   Routes,
   Route,
 } from "react-router-dom";
+import EndMatch from './screens/EndMatch';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Routes>
         <Route path='/' element={<Home/>} />
         <Route path='/game' element={<Game/>} />
+        <Route path='/end-game' element={<EndMatch winner={undefined} username={undefined}/>} />
       </Routes>
     </Router>
   );

@@ -43,6 +43,11 @@ const styles = {
   showing: {
     display: "block",
   },
+  credits: {
+    position: "absolute",
+    bottom: "10px",
+    fontSize: "12px",
+  },
 };
 
 const GAME_TYPE = {
@@ -143,6 +148,7 @@ const Home = () => {
         { (gameType === GAME_TYPE.NONE || gameType === GAME_TYPE.NEW) ? <Button variant="contained" style={styles.button} onClick={() => handleStartGame()}>Nueva partida</Button> : null }
         { (gameType === GAME_TYPE.NONE || gameType === GAME_TYPE.JOIN) ? <Button variant="contained" style={styles.button} onClick={() => handleJoinGame()}>Unirse a partida</Button> : null }
       </div>
+      <p style={styles.credits}>Por Julio Herrera y Diego Arredondo</p>
     </div>
   );
 };
