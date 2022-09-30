@@ -10,6 +10,7 @@ import roomPNG from "../assets/svg/room.png";
 import logoSVG from "../assets/svg/logo.svg";
 import crownPNG from "../assets/svg/crown.png";
 import {
+  challengeRes,
   changeTurn,
   getCards,
   getMessage,
@@ -19,12 +20,13 @@ import {
   returnHand,
   sendCard,
   sendCardResult,
+  sendChallengeReq,
   sendMessageRoom,
   startChallenge,
 } from "../services/game.socket";
 import MessageBubble from "../components/messageBubble";
 import OthersGame from "../components/othersGame";
-import { getCardNameFormatted } from "../features/communication.utils";
+import { getCardNameFormatted, getNextCardN } from "../features/communication.utils";
 
 const styles = {
   container: {
@@ -156,14 +158,41 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    pile: {
+      width: "100%",
+      display: "flex",
+      flexDirection: "row",
+      justifyContent: "flex-start",
+      alignItems: "center",
+      text: {
+        fontSize: "0.8em",
+        margin: "0 10px 0 15px",
+      },
+      card: {
+        margin: "2px",
+      }
+    }
   },
   myGame: {
     flex: 1,
+    marginTop: "10px",
     buttonContainer: {
       display: "flex",
+      flexDirection: "column",
       justifyContent: "center",
       alignItems: "center",
       margin: "40px 0 0 0",
+      button: {
+        margin: "10px 0 10px 0",
+      }
+    },
+    playedCard: {
+      display: "flex",
+      flexDirection: "column",
+      text: {
+        fontSize: "0.8em",
+        margin: "0 0 8px 0",
+      }
     }
   },
   card: {
@@ -244,7 +273,7 @@ const Game = () => {
   const [state, setState] = useState({
     turn: -1,
     usernameTurn: null,
-    cardPlayedName: null,
+    previousCardPlayedName: null,
   });
   const [hint, setHint] = useState(null);
   const [instruction, setInstruction] = useState(null);
@@ -252,16 +281,24 @@ const Game = () => {
   const [message, setMessage] = useState("");
   const [isTruth, setIsTruth] = useState(false);
   const [firsTimeUsers, setFirstTimeUsers] = useState(false);
+  const [challengedAccepted, setChallengedAccepted] = useState(false);
+  const [pileCount, setPileCount] = useState(0);
+  const [previousUser, setPreviousUser] = useState(null);
+  const [cardPlayed, setCardPlayed] = useState(null);
 
   const handleExitGame = () => {
     dispatch(removeRoom());
     navigate("/");
   };
 
+  const isMyTurn = () => {
+    return state.usernameTurn === user.value.username;
+  };
+
   const getSameNumberCards = () => {
     const sameNumberCards = cards.filter((card) => {
       const cardNumber = card.split("_")[0];
-      const previousCardNumber = state.cardPlayedName.split("_")[0];
+      const previousCardNumber = state.previousCardPlayedName.split("_")[0];
       return cardNumber === previousCardNumber;
     });
     return sameNumberCards;
@@ -279,7 +316,7 @@ const Game = () => {
   };
 
   const getTruth = () => {
-    if (state.turn === 0) {
+    if (state.turn >= 0) {
       const sameNumberCards = getSameNumberCards();
       const cardsFromHand = getCardsFromHand(sameNumberCards);
       if (cardsFromHand.length > 0) {
@@ -321,7 +358,40 @@ const Game = () => {
     setRoomUsers(res.users.map((user, index) => ({ ...user, isPartyLeader: user.username === res.users[0].username, order: index, cards: 10, isInTurn: false, cardGiven: false })));
   };
 
+  const handleChallenge = (res) => {
+    setChallengedAccepted(true);
+    sendChallengeReq({ username: user.value.username, room: user.value.room, challengedUsername: previousUser.username });
+  };
+
+  const handleChallengeRes = (res) => {
+    setHand(res.cards);
+    setCardPlayed(null);
+    setChallengedAccepted(true);
+    console.log("res", res);
+    if (res.message === 'you discovered the liar, he picks all the cards in pool' || res.message === 'He picks all the cards in pool, you are safe') {
+      const newRoomUsers = roomUsers.map((roomUser) => {
+        if (roomUser.username === state.usernameTurn) {
+          return { ...roomUser, cards: roomUsers + pileCount, cardGiven: false };
+        }
+        return { ...roomUser, cardGiven: false };
+      });
+      setRoomUsers(newRoomUsers);
+      setPileCount(0);
+    } else if (res.message === 'you got caught! you pick all the cards in pool' || res.message === 'It was truth, you pick all the cards in pool') {
+      const newRoomUsers = roomUsers.map((roomUser) => {
+        if (roomUser.username === user.value.username) {
+          return { ...roomUser, cards: roomUsers + pileCount, cardGiven: false };
+        }
+        return { ...roomUser, cardGiven: false };
+      });
+      setRoomUsers(newRoomUsers);
+      setPileCount(0);
+    }
+    console.log(roomUsers);
+  };
+
   const handleSendCard = () => {
+    setCardPlayed({ value: selectedCard, truth: isTruth });
     sendCard({ username: user.value.username , room: user.value.room, card: hand.findIndex((card) => card === selectedCard), truth: isTruth });
     changeTurn({ room: user.value.room, newUsernameTurn: roomUsers[(state.turn + 1) % roomUsers.length].username });
   };
@@ -333,17 +403,31 @@ const Game = () => {
 
   // solo para cambiar el turno
   const handleStartChallenge = () => {
-    console.log("start challenge");
-    console.log(roomUsers);
-    console.log('username', roomUsers[(state.turn + 1) % roomUsers.length].username);
+    setPileCount(pileCount + 1);
+    if (!challengedAccepted) {
+      setCardPlayed(null);
+    } else {
+      setChallengedAccepted(false);
+    }
     if (roomUsers.length > 0) {
-      setState((prevState) => ({ ...prevState, turn: prevState.turn + 1, usernameTurn: roomUsers[(prevState.turn + 1) % roomUsers.length].username }));
+      setState((prevState) => ({ ...prevState, turn: prevState.turn + 1, usernameTurn: roomUsers[(prevState.turn + 1) % roomUsers.length].username, previousCardPlayedName: cards[getNextCardN(prevState.turn + 1)] }));
     }
   };
 
   const getInstructions = () => {
-    if (state.turn === 0) {
-      setInstruction("Elige una carta con número 2");
+    if (state.turn >= 0) {
+      const cardNumber = ((state.turn + 1) % 13) + 1;
+      if (cardNumber > 1 && cardNumber < 11) {
+        setInstruction(`Elige una carta con número ${cardNumber}`);
+      } else if (cardNumber === 1) {
+        setInstruction(`Elige una carta con un AS`);
+      } else if (cardNumber === 11) {
+        setInstruction(`Elige una carta con un J`);
+      } else if (cardNumber === 12) {
+        setInstruction(`Elige una carta con un Q`);
+      } else if (cardNumber === 13) {
+        setInstruction(`Elige una carta con un K`);
+      }
     }
   };
 
@@ -370,6 +454,12 @@ const Game = () => {
       if (state.usernameTurn === roomUser.username) {
         return { ...roomUser, isInTurn: true };
       }
+      const actualIndex = roomUsers.findIndex((roomUserIndex) => roomUserIndex.username === state.usernameTurn);
+      const previousUser = actualIndex === 0 ? roomUsers[roomUsers.length - 1] : roomUsers[actualIndex - 1];
+      setPreviousUser(previousUser);
+      if (previousUser.username === roomUser.username && state.turn > 0) {
+        return { ...roomUser, cardGiven: true, cards: previousUser.cards - 1 };
+      }
       return { ...roomUser, isInTurn: false };
     });
     setRoomUsers(updatedRoomUsers);
@@ -389,10 +479,11 @@ const Game = () => {
   // Cosas que necesiten los usuarios definidos
   useEffect(() => {
     if (firsTimeUsers) {
-      const newState = { turn: state.turn + 1, cardPlayedName: cards[0], usernameTurn: roomUsers?.[0]?.username };
+      const newState = { turn: state.turn + 1, previousCardPlayedName: cards[0], usernameTurn: roomUsers?.[0]?.username };
       setState(newState); // Initial state with first user turn
       startChallenge(handleStartChallenge);
       setFirstTimeUsers(false);
+      challengeRes(handleChallengeRes);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomUsers, firsTimeUsers]);
@@ -474,11 +565,39 @@ const Game = () => {
               ) : (
                 <p>Esperando al lider de la partida</p>
               )
-            ) : null}
+            ) : (
+              <div style={styles.gameInfo.pile}>
+                <p style={styles.gameInfo.pile.text}>Turno: {state.turn + 1}</p>
+                <p style={styles.gameInfo.pile.text}>Cartas en pila: {pileCount}</p>
+                {
+                  [...Array(pileCount)].map((e, i) => {
+                    return (
+                      <div key={i} style={styles.gameInfo.pile.card}>
+                        <Card id="back" small={true} />
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            )}
           </div>
           <div style={styles.myGame}>
-            { instruction ? <p>{instruction}</p> : null }
-            { hint ? <p>{hint}</p> : null }
+            { instruction && isMyTurn() ? <p>{instruction}</p> : null }
+            { hint && isMyTurn() ? <p>{hint}</p> : null }
+            { cardPlayed?.value ? (
+              <div style={styles.myGame.playedCard}>
+                <p style={styles.myGame.playedCard.text}>Carta en juego:</p>
+                <Card id={cards[cardPlayed.value]} />
+                {
+                  cardPlayed.truth ? (
+                    <p style={styles.myGame.playedCard.text}>Verdad</p>
+                  ) : (
+                    <p style={styles.myGame.playedCard.text}>Mentira</p>
+                  )
+                }
+              </div>
+              ) : null }
+            <p>Tienes {hand.length} cartas</p>
             <div style={styles.cardsContainer}>
               {hand.map((cardIndex) => (
                 <div
@@ -497,10 +616,22 @@ const Game = () => {
               state.usernameTurn === user.value.username ? (
                 <div style={styles.myGame.buttonContainer}>
                   {
+                    roomUsers.some((roomUser) => roomUser.cardGiven) ? (
+                      <Button
+                        variant="contained"
+                        onClick={handleChallenge}
+                        style={styles.myGame.buttonContainer.button}
+                      >
+                        Retar
+                      </Button>
+                    ) : null
+                  }
+                  {
                     selectedCard ? (
                       <Button
                         variant="contained"
                         onClick={handleSendCard}
+                        style={styles.myGame.buttonContainer.button}
                       >
                         {
                           isTruth ? 'Enviar carta verdadera' : 'Enviar carta falsa'

@@ -1,6 +1,6 @@
 import socketIO from 'socket.io-client';
-const socket = socketIO.connect('https://ancient-chamber-06356.herokuapp.com/');
-//const socket = socketIO.connect('http://localhost:4000');
+//const socket = socketIO.connect('https://ancient-chamber-06356.herokuapp.com/');
+const socket = socketIO.connect('http://localhost:4000');
 
 export const joinRoom = ({ username, room }) => {
   socket.emit('joinRoom', { room, username });
@@ -26,12 +26,22 @@ export const sendCardResult = (callback) => {
 }
 
 export const changeTurn = ({ room, newUsernameTurn }) => {
-  console.log('changeTurn', room, newUsernameTurn);
   socket.emit('changeTurn', { room, username: newUsernameTurn });
 };
 
 export const startChallenge = (callback) => {
   socket.on('changeTurn', (data) => {
+    callback(data);
+  });
+};
+
+export const sendChallengeReq = ({ username, room, challengedUsername }) => {
+  console.log('sendChallengeReq', username, room, challengedUsername);
+  socket.emit('challenge', { username, room, challended: challengedUsername });
+};
+
+export const challengeRes = (callback) => {
+  socket.on('challenge', (data) => {
     callback(data);
   });
 };

@@ -16,3 +16,22 @@ export const dateFormat = (date) => {
 export const getCardNameFormatted = (card) => {
   return card.replace(/_/g, ' ');
 };
+
+export const getCardSymbol = (card) => {
+  return card.split('_')[0];
+};
+
+export const getNextCardN = (turn) => {
+  const cardNumber = ((turn + 1) % 13) + 1;
+  if (cardNumber > 1 && cardNumber < 11) {
+    return (cardNumber - 2) * 4;
+  } else if (cardNumber === 1) {
+    return 36;
+  } else if (cardNumber === 11) {
+    return 40;
+  } else if (cardNumber === 12) {
+    return 48;
+  } else if (cardNumber === 13) {
+    return 44;
+  }
+};
