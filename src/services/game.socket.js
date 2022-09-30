@@ -15,6 +15,27 @@ export const getCards = ({ username, room }) => {
   });
 };
 
+export const sendCard = ({ username, room, card, truth }) => {
+  socket.emit('sendCards', { username, room, card, truth });
+};
+
+export const sendCardResult = (callback) => {
+  socket.on('sendCards', (data) => {
+    callback(data);
+  });
+}
+
+export const changeTurn = ({ room, newUsernameTurn }) => {
+  console.log('changeTurn', room, newUsernameTurn);
+  socket.emit('changeTurn', { room, username: newUsernameTurn });
+};
+
+export const startChallenge = (callback) => {
+  socket.on('changeTurn', (data) => {
+    callback(data);
+  });
+};
+
 export const returnHand = (callback) => {
   socket.on('getCards', (data) => {
     callback(data);

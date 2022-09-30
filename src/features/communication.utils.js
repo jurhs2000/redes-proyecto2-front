@@ -12,3 +12,7 @@ export const dateFormat = (date) => {
   const seconds = `0${d.getSeconds()}`.slice(-2);
   return `${_date}-${month}-${year} ${hour}:${minutes}:${seconds}`;
 };
+
+export const getCardNameFormatted = (card) => {
+  return card.replace(/_/g, ' ');
+};

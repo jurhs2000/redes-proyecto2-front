@@ -10,16 +10,21 @@ import roomPNG from "../assets/svg/room.png";
 import logoSVG from "../assets/svg/logo.svg";
 import crownPNG from "../assets/svg/crown.png";
 import {
+  changeTurn,
   getCards,
   getMessage,
   getMessages,
   getRoomUsers,
   reqRoomUsers,
   returnHand,
+  sendCard,
+  sendCardResult,
   sendMessageRoom,
+  startChallenge,
 } from "../services/game.socket";
 import MessageBubble from "../components/messageBubble";
 import OthersGame from "../components/othersGame";
+import { getCardNameFormatted } from "../features/communication.utils";
 
 const styles = {
   container: {
@@ -239,13 +244,14 @@ const Game = () => {
   const [state, setState] = useState({
     turn: -1,
     usernameTurn: null,
-    cardPlayed: null,
+    cardPlayedName: null,
   });
   const [hint, setHint] = useState(null);
   const [instruction, setInstruction] = useState(null);
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
   const [isTruth, setIsTruth] = useState(false);
+  const [firsTimeUsers, setFirstTimeUsers] = useState(false);
 
   const handleExitGame = () => {
     dispatch(removeRoom());
@@ -277,7 +283,7 @@ const Game = () => {
       const sameNumberCards = getSameNumberCards();
       const cardsFromHand = getCardsFromHand(sameNumberCards);
       if (cardsFromHand.length > 0) {
-        setHint(`Puedes jugar las cartas: ${cardsFromHand.join(", ")} de tu mano`);
+        setHint(`Puedes jugar las cartas: ${cardsFromHand.map((cardHand) => getCardNameFormatted(cardHand)).join(", ")} de tu mano`);
       } else {
         setHint("No tienes cartas para jugar");
       }
@@ -304,10 +310,11 @@ const Game = () => {
     return roomUsers?.[0]?.username === user.value.username;
   };
 
+  // solo se ejecuta una vez
   const handleReturnHand = (res) => {
     setHand(res.cards);
     setSelectedCard(null);
-    setState((prevState) => ({ ...prevState, turn: prevState.turn + 1 }));
+    setFirstTimeUsers(true);
   };
 
   const handleRoomUsers = (res) => {
@@ -315,9 +322,23 @@ const Game = () => {
   };
 
   const handleSendCard = () => {
-    console.log(selectedCard);
-    console.log(hand);
-    console.log(hand.findIndex((card) => card === selectedCard));
+    sendCard({ username: user.value.username , room: user.value.room, card: hand.findIndex((card) => card === selectedCard), truth: isTruth });
+    changeTurn({ room: user.value.room, newUsernameTurn: roomUsers[(state.turn + 1) % roomUsers.length].username });
+  };
+
+  // solo para actualizar las cartas
+  const handleSendCardResult = (res) => {
+    setHand(res.cards);
+  };
+
+  // solo para cambiar el turno
+  const handleStartChallenge = () => {
+    console.log("start challenge");
+    console.log(roomUsers);
+    console.log('username', roomUsers[(state.turn + 1) % roomUsers.length].username);
+    if (roomUsers.length > 0) {
+      setState((prevState) => ({ ...prevState, turn: prevState.turn + 1, usernameTurn: roomUsers[(prevState.turn + 1) % roomUsers.length].username }));
+    }
   };
 
   const getInstructions = () => {
@@ -340,6 +361,7 @@ const Game = () => {
     getMessages(handleMessage);
     getRoomUsers(handleRoomUsers);
     reqRoomUsers(user.value.room);
+    sendCardResult(handleSendCardResult);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -364,11 +386,16 @@ const Game = () => {
   }, [selectedCard]);
 
   // Solo para indicar el primer jugador al principio del juego
+  // Cosas que necesiten los usuarios definidos
   useEffect(() => {
-    const newState = { turn: state.turn, cardPlayedName: cards[0], usernameTurn: roomUsers?.[0]?.username };
-    if (newState.usernameTurn !== state.usernameTurn) setState(newState);
+    if (firsTimeUsers) {
+      const newState = { turn: state.turn + 1, cardPlayedName: cards[0], usernameTurn: roomUsers?.[0]?.username };
+      setState(newState); // Initial state with first user turn
+      startChallenge(handleStartChallenge);
+      setFirstTimeUsers(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomUsers]);
+  }, [roomUsers, firsTimeUsers]);
 
   useEffect(() => {
     if (user.status === "not joined") {
